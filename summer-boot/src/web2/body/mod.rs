@@ -29,6 +29,15 @@ mod body;
 mod length;
 mod to_bytes;
 
+macro_rules! ready {
+    ($e:expr) => {
+        match $e {
+            std::task::Poll::Ready(v) => v,
+            std::task::Poll::Pending => return std::task::Poll::Pending,
+        }
+    };
+}
+
 /// An optimization to try to take a full body if immediately available.
 ///
 /// This is currently limited to *only* `hyper::Body`s.

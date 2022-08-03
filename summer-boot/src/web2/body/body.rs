@@ -4,12 +4,13 @@ use std::fmt;
 use bytes::Bytes;
 use futures_channel::mpsc;
 use futures_channel::oneshot;
-use futures_core::Stream; // for mpsc::Receiver
+use futures_core::Future;
+use futures_core::Stream;
 use http::HeaderMap;
 use http_body::{Body as HttpBody, SizeHint};
 
 use super::DecodedLength;
-use crate::web2::common::Future;
+
 #[cfg(all(feature = "client", any(feature = "http1", feature = "http2")))]
 use crate::web2::common::Never;
 use crate::web2::common::{task, watch, Pin, Poll};
@@ -18,6 +19,15 @@ use crate::web2::proto::http2::ping;
 
 type BodySender = mpsc::Sender<Result<Bytes, crate::web2::error::Error>>;
 type TrailersSender = oneshot::Sender<HeaderMap>;
+
+macro_rules! ready {
+    ($e:expr) => {
+        match $e {
+            std::task::Poll::Ready(v) => v,
+            std::task::Poll::Pending => return std::task::Poll::Pending,
+        }
+    };
+}
 
 /// A stream of `Bytes`, used when receiving bodies.
 ///
